@@ -1,0 +1,291 @@
+---
+
+title: "Repeated G-test of goodness-of-fit"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE)
+```
+
+# Introduction
+
+This method is used for repeated G-tests of goodness-of-fit when we have two nominal variables and we’ve done a goodness-offit experiment more than once; for example, you might look at the fit to a 3:1 ratio of a genetic cross in more than one family, or fit to a 1:1 sex ratio in more than one population, or fit to a 1:1 ratio of broken right and left ankles on more than one sports team. 
+
+One question then is, should you analyze each experiment separately, risking the chance that the small sample sizes will have insufficient power? Or should you pool all the data, ignoring the possibility that the different experiments gave different results? This is when the additive property of the G–test of goodness-of-fit becomes important, because you can
+do a repeated G–test of goodness-of-fit and test several hypotheses at once.
+
+You use the repeated G–test of goodness-of-fit when you have two nominal variables, one with two or more biologically interesting values (such as red vs. pink vs. white flowers), the other representing different replicates of the same experiment (different days, different locations, different pairs of parents). You compare the observed data with an
+extrinsic theoretical expectation (such as an expected 1: 2: 1 ratio in a genetic cross).
+
+# Example
+
+## Data
+
+Guttman et al. (1967) counted the number of people who fold their arms with the right arm on top (R) or the left arm on top (L) in six ethnic groups in Israel:
+
+```{r}
+
+Input =("
+Ethnic.group  R    L
+ Yemen        168  174 
+ Djerba       132  195
+ Kurdistan    167  204
+ Libya        162  212
+ Berber       143  194
+ Cochin       153  174
+")
+
+Data = read.table(textConnection(Input),header=TRUE); Data
+```
+
+H0: The null hypothesis is that half the people would be R and half would be L. It would be possible to add together the numbers from all six groups and test the fit with a chi-square or G–test of goodness-of-fit, but that could overlook differences among the groups. It would also be possible to test each group separately, but that could overlook deviations
+from the null hypothesis that were too small to detect in each ethnic group sample, but would be detectable in the overall sample. 
+
+The repeated goodness-of-fit test tests the data both ways.
+
+## H0 hypothesis
+
+This technique actually tests four null hypotheses. 
+
+1) The numbers within each experiment fit the expectations; for our arm-folding example, the null hypothesis is that there is a 1:1 ratio of R and L folders within each ethnic group. This is the same null hypothesis as for a regular G–test of goodness-of-fit applied to each experiment. 
+
+2) The second null hypothesis is that the relative proportions are the same across the different experiments; in our example, this null hypothesis would be that the proportion of R folders is the same in the different ethnic groups. This is the same as the null hypothesis for a G–test of independence. 
+
+3) The third null hypothesis is that the pooled data fit the expectations; for our example, it would be that the number of R and L folders, summed across all six ethnic groups, fits a 1:1 ratio. 
+
+4) The fourth null hypothesis is that overall, the data from the individual experiments fit the expectations.
+
+## Test
+
+### What needs to be decided before testing
+
+First, **decide what you’re going to do if there is significant variation among the replicates**. 
+
+Your decision should be based on whether your goal is **estimation** or **hypothesis testing**. 
+
+Estimation: 
+
+If you were already confident that fewer than 50% of people fold their arms with the right on top, and you were just trying to estimate the proportion of right-on-top folders as accurately as possible, your goal would be estimation. If this is the goal, and **there is significant heterogeneity among the replicates, you probably shouldn’t pool the results**; it would be misleading to say “42% of people are right-on-top folders” if some ethnic groups are 30% and some are 50%; If there’s no significant heterogeneity, you’d want to pool the individual replicates to get one big sample and
+therefore make a precise estimate.
+
+Hypothesis testing:
+
+If you’re mainly interested in the knowing whether there’s a deviation from the null expectation, and you’re not as interested in the size of the deviation, then you’re doing hypothesis testing, and you may want to pool the samples even if they are significantly different from each other. 
+
+Finding out that there’s asymmetry—that fewer than 50% of people fold with their right arm on top—could say
+something interesting about developmental biology and would therefore be interesting, but you might not care that much if the asymmetry was stronger in some ethnic groups than others. So you might **decide to pool the data even if there is significant heterogeneity**.
+
+### 1) Individual G-tests
+
+```{r}
+# Do not use any continuity corrections when doing a replicated G–test, or the G values will not add up properly
+
+library(RVAideMemoire)
+library(dplyr)
+
+Fun.G = function (Q){                           # Functions 
+          G.test(x=c(Q["R"], Q["L"]),           #   to calculate
+                 p=c(0.5, 0.5)                  #   individual G’s, 
+                 )$statistic                    #   df’s, and p-values
+               }
+
+Fun.df = function (Q){
+           G.test(x=c(Q["R"], Q["L"]),
+                  p=c(0.5, 0.5)
+                  )$parameter
+               }
+
+Fun.p = function (Q){
+          G.test(x=c(Q["R"], Q["L"]),
+                 p=c(0.5, 0.5)
+                 )$p.value
+               }
+
+
+
+
+Data=
+mutate(Data,
+       Prop.R = R / (R + L),                         # Calculate proportion
+                                                     #     of right arms
+        G =       apply(Data[c("R", "L")], 1, Fun.G),
+        df =      apply(Data[c("R", "L")], 1, Fun.df),
+        p.Value = apply(Data[c("R", "L")], 1, Fun.p)
+        )
+
+Data
+
+```
+
+Result: As you can see, three of the ethnic groups (Djerba, Libya, and Berber) have P values less than 0.05. However, because you’re doing 6 tests at once, you should probably apply a correction for multiple comparisons. Applying a Bonferroni correction leaves only the Djerba and Berber groups as significant.
+
+### 2) Heterogeneity G-test
+ 
+```{r}
+
+Data.matrix = as.matrix(Data[c("R", "L")])      # We need a data matrix
+                                                #   to run G-test
+Data.matrix                                     #   for heterogeneity
+
+ 
+G.test(Data.matrix)                             # Heterogeneity
+```
+
+Result:  G–test of independence on the data. This give a “heterogeneity G value,” which for our example is G=6.750, 5 d.f., P=0.24. This means that the R:L ratio is not significantly different among the 6 ethnic groups. If there had been a significant result, you’d have to look back at what you decided in the first step to know whether to go on and pool the results or not.
+
+### 3) Pooled G-test
+ 
+```{r}
+# doing the pooled test (either because the heterogeneity G value was not significant, or because you decided to pool even if the heterogeneity was significant)
+
+Total.R = sum(Data$R)                           # Set up data for pooled
+Total.L = sum(Data$L)                           #   G-test
+
+observed = c(Total.R, Total.L)
+expected = c(0.5, 0.5)
+
+G.test(x=observed,
+       p=expected)
+```
+
+Result: There are a total of 925 R and 1153 L, which gives G=25.067, 1 d.f., P=5.5×10–7. The interpretation of this “pooled G value” is that overall, significantly fewer than 50% of people fold their arms with the right arm on top.
+Because the G–test of independence was not significant, you can be pretty sure that this is a consistent overall pattern, not just due to extreme deviations in one or two samples. If the G–test of independence had been significant, you’d be much more cautious about interpreting the goodness-of-fit test of the summed data. 
+
+### 4) Total G-test
+
+If it is significant, you can reject the null hypothesis that all of the data from the different experiments fit the expected ratio. Usually, you’ll be able to look at the other results and see that the total G value is significant because the goodness-of-fit of the pooled data is significant, or because the test of independence shows significant
+heterogeneity among the replicates, or both. However, it is possible for the total G value to be significant even if none of the other results are significant. This would be frustrating; it would tell you that there’s some kind of deviation from the null hypotheses, but it wouldn’t be entirely clear what that deviation was.
+ 
+```{r}
+Total.G  = sum(Data$G)                          # Set up data for total
+                                                #   G-test                                      
+Total.df = sum(Data$df)
+  
+Total.G                                         # Total
+
+ 
+pchisq(Total.G,
+       df= Total.df,
+       lower.tail=FALSE)
+```
+
+Result:  If it is significant, you can reject the null hypothesis that all of the data from the different experiments fit the expected ratio. Usually, you’ll be able to look at the other results and see that the total G value is significant because the goodness-of-fit of the pooled data is significant, or because the test of independence shows significant heterogeneity among the replicates, or both. However, it is possible for the total G value to be significant even if none of the other results are significant. This would be frustrating; it would tell you that there’s some kind of deviation from the null hypotheses, but it wouldn’t be entirely clear what that deviation was.
+
+# Example: Drosophila example
+
+Connallon and Jakubowski (2009) performed mating competitions among male Drosophila melanogaster. They took the “unpreferred” males that had lost three competitions in a row and mated them with females, then looked at the sex ratio of the offspring. 
+
+```{r}
+
+Input =("
+ Trial       D    S
+ 'Trial 1'   296  366     
+ 'Trial 2'    78   72      
+ 'Trial 3'   417  467
+")
+
+Data = read.table(textConnection(Input),header=TRUE)
+```
+ 
+
+Individual G-tests
+ 
+```{r}
+library(RVAideMemoire)
+
+Fun.G = function (Q){                           # Functions 
+          G.test(x=c(Q["D"], Q["S"]),           #   to calculate
+                 p=c(0.5, 0.5)                  #   individual G’s and
+                 )$statistic                    #   p-values
+               }
+
+Fun.df = function (Q){
+           G.test(x=c(Q["D"], Q["S"]),
+                  p=c(0.5, 0.5)
+                  )$parameter
+                }
+
+Fun.p = function (Q){
+          G.test(x=c(Q["D"], Q["S"]),
+                 p=c(0.5, 0.5)
+                 )$p.value
+                }
+
+
+library(dplyr)
+
+Data =
+mutate(Data,
+       G =       apply(Data[c("D", "S")], 1, Fun.G),
+       df =      apply(Data[c("D", "S")], 1, Fun.df),
+       p.Value = apply(Data[c("D", "S")], 1, Fun.p))
+
+Data
+```
+ 
+
+Heterogeneity G-test
+ 
+```{r}
+Data.matrix = as.matrix(Data[c("D", "S")])      # We need a data matrix
+                                                #   to run G-test
+Data.matrix                                     #   for heterogeneity
+
+ 
+
+G.test(Data.matrix)                             # Heterogeneity
+
+ 
+
+G-test
+
+G = 2.8168, df = 2, p-value = 0.2445
+```
+ 
+Pooled G-test
+ 
+```{r}
+Total.D = sum(Data$D)                           # Set up data for pooled
+Total.S = sum(Data$S)                           #   G-test
+
+observed = c(Total.D, Total.S)
+expected = c(0.5, 0.5)
+
+G.test(x=observed,                              # Pooled
+       p=expected)
+
+   
+
+G-test for given probabilities
+
+G = 7.6685, df = 1, p-value = 0.005619
+
+``` 
+
+Total G-test
+ 
+```{r}
+Total.G = sum(Data$G)                           # Set up data for total
+                                                #   G-test 
+degrees = 3
+   
+Total.G  = sum(Data$G)                          # Set up data for total
+                                                #   G-test                                      
+Total.df = sum(Data$df)
+
+Total.G                                         # Total
+
+Total.df
+
+
+pchisq(Total.G,
+       df=Total.df,
+       lower.tail=FALSE)
+```
+
+Result: The total G value is significant, so you can reject the null hypotheses that all three trials have the same 1:1 sex ratio. The heterogeneity G value is not significant; although the results of the second trial may look quite different from the results of the first and third trials, the three trials are not significantly different. You can therefore look at the pooled G value. It is significant; the unpreferred males have significantly more daughters than sons. 

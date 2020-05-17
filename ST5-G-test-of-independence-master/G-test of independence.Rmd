@@ -1,0 +1,248 @@
+---
+title: "G-test of independence"
+output: html_document
+  toc: true
+    number_sections: true
+    
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE)
+```
+
+# Introduction
+
+The G–test of independence is used when we have two nominal variables (each with two or more possible values) and we want to see whether the proportions of one variable are different for different values of the other variable. Use it when the sample size is large.
+
+**The chi-square test gives approximately the same results as the G–test.** G–tests are a subclass of likelihood ratio tests, a general category of tests that have many uses for testing the fit of data to mathematical models; the more elaborate versions of likelihood ratio tests don’t have equivalent tests using the Pearson chi-square statistic. The G–test is therefore preferred by many, even for simpler designs. 
+
+You can use the G–test both:
+
+- as a test of **goodness-of-fit** (comparing frequencies of one nominal variable to theoretical expectations)
+- as a test of independence (comparing frequencies of one nominal variable for different values of a second nominal variable). 
+
+If the expected numbers in some classes are small, the G–test will give inaccurate results. In that case, you should use **Fisher’s exact test**. It is recommended to use the G–test only when the total sample size is greater than 1000, and using Fisher’s exact test for everything smaller than that. 
+
+If the samples are not independent, but instead are before-and-after observations on the same individuals, you should use **McNemar’s test**.
+
+# Example: Vaccination
+
+Same example as for Chi-square test of Independence and also similar results:
+
+```{r}
+# Log likelihood ratio (G-test) test of independence without correction
+
+Input =("
+ Injection.area  No.severe  Severe       
+ Thigh           4788       30
+ Arm             8916       76
+")
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1)); Matriz
+
+# There is a higher proportion of severe reactions in children vaccinated in the arm; a G–test of independence will tell you whether a difference this big is likely to have occurred by chance.
+
+
+
+library(DescTools)
+    
+GTest(Matriz,
+      correct="none")            # "none" "williams" "yates"
+      
+# G = 2.1087, X-squared df = 1, p-value = 0.1465, not significant
+```
+
+```{r}
+library(RVAideMemoire)
+
+G.test(Matriz)
+
+ G = 2.1087, df = 1, p-value = 0.1465   # Note values differ from
+
+                                        # the Handbook
+
+                                        # for this example
+```
+
+Result: The null hypothesis is that the relative proportions of one variable are independent of the second variable; the null hypothesis is that the proportion of children given thigh injections who have severe reactions is equal to the proportion of children given arm injections who have severe reactions.
+
+# How the test works
+
+The math of the G–test of independence is the same as for the G–test of goodness-of-fit,
+only the method of calculating the expected frequencies is different. 
+
+For the goodness-offit test, you use a theoretical relationship to calculate the expected frequencies. 
+For the test of independence, you use the observed frequencies to calculate the expected. 
+
+For the vaccination example, there are 4758+8840+30+76=13704 total children, and 30+76=106 of
+them had reactions. The null hypothesis is therefore that 106/13704=0.7735% of the
+children given injections in the thigh would have reactions, and 0.7735% of children given
+injections in the arm would also have reactions. There are 4758+30=4788 children given
+injections in the thigh, so you expect 0.007735× 4788=37.0 of the thigh children to have
+reactions, if the null hypothesis is true. You could do the same kind of calculation for each
+of the cells in this 2×2 table of numbers.
+
+Once you have each of the four expected numbers, you could compare them to the observed numbers using the G–test, just like you did for the G–test of goodness-of-fit. The result is G=2.14.
+
+To get the P value, you also need the number of degrees of freedom. The degrees of freedom in a test of independence are equal to (number of rows–1)× (number of columns)–1. Thus for a 2×2 table, there are (2–1)×(2–1)=1 degree of freedom; for a 4×3 table, there are (4–1)×(3–1)=6 degrees of freedom. 
+
+For G=2.14 with 1 degree of freedom, the P value is 0.14, which is not significant; 
+
+
+# Post-hoc tests
+
+The following examples are same as were for Chi-square test of independence. Results are very similar to each other.
+
+```{r}
+
+# Post-hoc example, G-test of independence
+
+Input =("
+ Supplement     No.cancer  Cancer
+ 'Selenium'     8177       575
+ 'Vitamin E'    8117       620
+ 'Selenium+E'   8147       555
+ 'Placebo'      8167       529
+")
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1))
+
+Matriz
+
+library(RVAideMemoire)
+
+G.test(Matriz)
+
+# G = 7.7325, df = 3, p-value = 0.05188
+
+```
+ 
+```{r}
+#Post-hoc pairwise G-tests with pairwise.table
+
+#As is, this function works on a matrix with two columns, and compares rows.
+
+library(RVAideMemoire)
+
+pairwise.G.test(Matriz, 
+                p.method = "none")           # Can adjust p-values; 
+                                             # see ?p.adjust for options
+
+```
+
+```{r}
+
+Input =("
+Supplement      No.cancer  Cancer
+ 'Selenium'     8177       575
+ 'Vitamin E'    8117       620
+ 'Selenium+E'   8147       555
+ 'Placebo'      8167       529
+")
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1)); Matriz
+```
+
+```{r}
+# Log likelihood ratio (G-test) test of independence without correction
+
+library(DescTools)    
+
+GTest(Matriz,
+      correct="none")
+
+# G = 7.7325, X-squared df = 3, p-value = 0.05188
+```
+
+```{r}
+FUN = function(i,j){     
+      GTest(matrix(c(Matriz[i,1], Matriz[i,2], 
+                      Matriz[j,1], Matriz[j,2]),
+             nrow=2,
+             byrow=TRUE),
+             correct="none")$ p.value   # "none" "williams" "yates"
+            }
+   
+pairwise.table(FUN,
+               rownames(Matriz),
+               p.adjust.method="none")       # Can adjust p-values
+                                             # See ?p.adjust for options
+```
+  
+
+# Examples
+
+Examples are same as for Chi-square test of independence, results are also similar
+
+G-tests with DescTools and RVAideMemoire
+
+## Example 1: Helmet
+```{r}
+
+Input =("
+ PSE       Head.injury  Other.injury
+ Helemt    372          4715
+ No.helmet 267          1391
+")
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1)); Matriz
+
+library(DescTools)
+
+# Log likelihood ratio (G-test) test of independence without correction
+ 
+GTest(Matriz,
+      correct="none")            # "none" "williams" "yates"
+ 
+```
+
+```{r}
+ library(RVAideMemoire)
+
+G.test(Matriz)
+
+``` 
+
+
+## Example 2: Genotype 
+
+```{r}
+
+Input =("
+ Genotype  No.disease Coronary.disease 
+ ins.ins   268        807
+ ins.del   199        759
+ del.del    42        184
+")
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1)); Matriz
+
+library(DescTools)
+
+# Log likelihood ratio (G-test) test of independence without correction
+
+GTest(Matriz,
+      correct="none")            # "none" "williams" "yates"
+```
+
+
+```{r}
+library(RVAideMemoire)
+
+G.test(Matriz)
+
+```
+ 
+# Power Analysis
+
+Power analysis would be same as for Chi-square Test of Independence.

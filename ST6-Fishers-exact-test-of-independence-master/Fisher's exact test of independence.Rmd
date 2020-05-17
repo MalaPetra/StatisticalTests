@@ -1,0 +1,292 @@
+
+title: "Fisher's exact test of independence"
+output: html_notebook
+  toc: true
+    number_sections: true
+    
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE)
+```
+
+# Introduction
+
+Use Fisher’s exact test of independence when you have two nominal variables and you want to see whether the proportions of one variable are different depending on the value of the other variable. Use it when the **sample size is small** (total sample size is less than 1000).
+
+*Note: The usual rule of thumb was that Fisher’s exact test is only necessary when one or more expected
+values are less than 5, but this is a remnant of the days when doing the calculations for Fisher’s exact test was really hard. It is recommended using Fisher’s exact test for any experiment with a total sample size less than 1000.*
+
+# Example
+
+## Example 1: Chipmunk
+
+The eastern chipmunk trills when pursued by a predator, possibly to warn other chipmunks. 
+Burke da Silva et al. (2002) released chipmunks either 10 or 100 meters from their home burrow, then chased them (to simulate predator pursuit).
+Out of 24 female chipmunks released 10 m from their burrow, 16 trilled and 8 did not trill. When released
+100 m from their burrow, only 3 female chipmunks trilled, while 18 did not trill.
+The two nominal variables are thus distance from the home burrow (because there are only two values, distance is a nominal variable in this experiment) and trill vs. no trill.
+
+```{r}
+Input =("
+Distance    Trill  No.trill
+ 10m        16     8
+ 100m        3    18
+")
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1)); Matriz
+
+fisher.test(Matriz,
+            alternative="two.sided")
+
+ # the proportion of chipmunks trilling is significantly higher (P=0.0007) when they are closer to their burrow.
+```
+ 
+
+
+## Example 2: Drosophila
+McDonald and Kreitman (1991) sequenced the alcohol dehydrogenase gene in several individuals of three species of Drosophila. Varying sites were classified as synonymous (the nucleotide variation does not change an amino acid) or amino acid replacements, and they were also classified as polymorphic (varying within a species) or fixed differences
+between species. 
+The two nominal variables are thus substitution type (synonymous or replacement) and variation type (polymorphic or fixed). In the absence of natural selection, the ratio of synonymous to replacement sites should be the same for
+polymorphisms and fixed differences. 
+There were 43 synonymous polymorphisms, 2 replacement polymorphisms, 17 synonymous fixed differences, and 7 replacement fixed differences. 
+
+```{r}
+Input =("
+Variation             Synonymous  Replacement
+ 'Polymorphisms'      43          2
+ 'Fixed differences'  17          7
+")
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1)); Matriz
+
+fisher.test(Matriz,
+            alternative="two.sided")
+# the null hypothesis can be rejected; there is a significant difference in synonymous/replacement ratio between polymorphisms and fixed differences
+```
+
+## Example 3: King penguin
+
+Descamps et al. (2009) tagged 50 king penguins (Aptenodytes patagonicus) in each of
+three nesting areas (lower, middle, and upper) on Possession Island in the Crozet Archipelago, then counted the number that were still alive a year later, with these results:
+
+```{r}
+Input =("
+ Site     Alive  Dead
+ Lower    43     7
+ Middle   44     6
+ Upper    49     1
+")
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1)); Matriz
+```
+
+Seven penguins had died in the lower area, six had died in the middle area, and only one had died in the upper area. Descamps et al. analyzed the data with a G–test of independence, yielding a significant (P=0.048) difference in survival among the areas; however, analyzing the data with Fisher’s exact test yields a non-significant (P=0.090)
+result.
+
+```{r}
+fisher.test(Matriz,
+            alternative="two.sided")
+```
+
+## Example 4: Moray eel
+
+Young and Winn (2003) counted sightings of the spotted moray eel, Gymnothorax moringa, and the purplemouth moray eel, G. vicinus, in a 150-m by 250-m area of reef in Belize. 
+They identified each eel they saw, and classified the locations of the sightings into three types: 
+
+- those in grass beds, 
+- those in sand and rubble, 
+- and those within one meter of the border between grass and sand/rubble. 
+
+The number of sightings are shown in the table, with percentages in parentheses:
+
+```{r}
+Input =("
+
+ Site     G.moringa  G.vicinus       
+ Grass    127        116
+ Sand      99         67
+ Border   264        161
+")
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1)); Matriz
+```
+
+```{r}
+fisher.test(Matriz,
+            alternative="two.sided")
+```
+
+## Example 5: Herons
+
+Custer and Galli (2002) flew a light plane to follow great blue herons (Ardea herodias) and great egrets (Casmerodius albus) from their resting site to their first feeding site at Peltier Lake, Minnesota, and recorded the type of substrate each bird landed on.
+
+```{r}
+
+Input =("
+ Site          Heron  Egret       
+ Vegetation    15     8
+ Shoreline     20     5
+ Water         14     7
+ Structures     6     1
+")
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1)); Matriz
+
+fisher.test(Matriz,
+            alternative="two.sided")
+```
+
+## Example 6: Bird
+```{r}
+Input =("
+
+Bird    Substrate   Count
+ heron  vegetation  15
+ heron  shoreline   20
+ heron  water       14
+ heron  structures   6
+ egret  vegetation   8
+ egret  shoreline    5
+ egret  water        7
+ egret  structures   1
+")
+
+Data = read.table(textConnection(Input), header=TRUE)
+
+Data.xtabs = xtabs(Count ~ Bird + Substrate, data=Data); Data.xtabs
+
+summary(Data.xtabs)
+
+
+### Fisher’s exact test of independence
+
+fisher.test(Data.xtabs,
+             alternative="two.sided")
+```
+
+# Post-hoc tests
+
+Fredericks (2012) wanted to know whether checking termite monitoring stations frequently would scare termites away and make it harder to detect termites. He checked the stations (small bits of wood in plastic tubes, placed in the
+round near termite colonies) either every day, every week, every month, or just once at the end of the three-month study, and recorded how many had termite damage by the end of the study:
+
+```{r}
+Input =("
+Frequency  Damaged  Undamaged
+Daily       1        24
+Weekly      5        20
+Monthly    14        11
+Quarterly  11        14
+")
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1)); Matriz
+```
+
+```{r}
+fisher.test(Matriz,
+            alternative="two.sided")
+
+
+library(rcompanion)
+
+PT = pairwiseNominalIndependence(Matriz,
+
+                                 fisher = TRUE,
+
+                                 gtest  = FALSE,
+
+                                 chisq  = FALSE,
+                                 digits = 3); PT
+```
+
+The overall P value for this is P=0.00012, so it is highly significant; the frequency of disturbance is affecting the presence of termites. 
+
+The post hoc tests can be done by 6 possible pairwise comparisons (daily vs. weekly, daily vs. monthly, etc.), then apply the Bonferroni correction for multiple tests. With 6 pairwise comparisons, the P value must be less than 0.05/6, or 0.008, to be significant at the P<0.05 level. 
+
+Two comparisons (daily vs. monthly and daily vs. quarterly) are therefore significant.
+
+*Note: You could have decided, before doing the experiment, that testing all possible pairs would make it too hard to find a significant difference, so instead you would just test each treatment vs. quarterly. This would mean there were only 3 possible pairs, so each pairwise P value would have to be less than 0.05/3, or 0.017, to be significant. That would give you more power, but it would also mean that you couldn’t change your mind after you saw the data and decide to compare daily vs. monthly.*
+
+
+# Assumptions
+
+## Independence
+
+Fisher’s exact test, like other tests of independence, assumes that the individual observations are independent.
+
+## Fixed totals
+
+Unlike other tests of independence, Fisher’s exact test assumes that **the row and column totals are fixed, or “conditioned.”**
+
+An example would be putting 12 female hermit crabs and 9 male hermit crabs in an aquarium with 7 red snail shells and 14 blue snail shells, then counting how many crabs of each sex chose each color (you know that each hermit crab will pick one shell to live in).The total number of female crabs is fixed at 12, the total number of male crabs is fixed at 9, the total number of red shells is fixed at 7, and the total number of blue shells is fixed at 14. 
+You know, before doing the experiment, what these totals will be; the only thing you don’t know is how many of each sex-color combination there are.
+
+There are very few biological experiments where both the row and column totals are conditioned. In the much more common design, one or two of the row or column totals are free to vary, or “unconditioned.” 
+
+For example, in our C. difficile experiment above, the numbers of people given each treatment are fixed (16 given a fecal transplant, 13 given vancomycin), but the total number of people who are cured could have been anything from 0 to 29. 
+
+In the moray eel experiment above, both the total number of each species of eel, and the total number of eels in each habitat, are unconditioned.
+
+When one or both of the row or column totals are unconditioned, the Fisher’s exact test is not, strictly speaking, exact. Instead, it is somewhat conservative, meaning that if the null hypothesis is true, you will get a significant (P<0.05) P value less than 5% of the time.
+
+This makes it a little less powerful (harder to detect a real difference from the null, when
+there is one). Statisticians continue to argue about alternatives to Fisher’s exact test, but the improvements seem pretty small for reasonable sample sizes, with the considerable cost of explaining to your readers why you are using an obscure statistical test instead of the familiar Fisher’s exact test.
+
+# McNemar's test
+
+You should use McNemar’s test when the two samples are not independent, but instead are two sets of pairs of observations. Often, each pair of observations is made on a single individual, such as individuals before and after a treatment or individuals diagnosed using two different techniques. 
+
+
+Care is needed in setting up the data for McNemar’s test.  For a before-and-after test, the contingency table is set-up as before and after as row and column headings, or vice-versa.  Note that the total observations in the contingency table is equal to the number of experimental units.  That is, in the following example there are 62 men, and the sum of the counts in the contingency table is 62.  If you set up the table incorrectly, you might end with double this number, and this will not yield the correct results.
+
+ 
+```{r}
+# Dysfunction example, McNemar test, pp. 82–83
+
+Input =("
+ Row          After.no  After.yes       
+ Before.no    46        10
+ Before.yes    0         6
+")
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1)); Matriz
+
+mcnemar.test(Matriz, correct=FALSE)
+
+ # McNemar's chi-squared = 10, df = 1, p-value = 0.001565
+```
+
+```{r}
+
+# xample using cross-tabulation
+
+Input =("
+ED.before  ED.after  Count
+ no         no       46
+ no         yes      10  
+ yes        no        0
+ yes        yes       6
+")
+
+Data = read.table(textConnection(Input),header=TRUE)
+
+Data.xtabs = xtabs(Count ~ ED.before + ED.after, data=Data); Data.xtabs
+
+mcnemar.test(Data.xtabs, correct=FALSE)
+
+ # McNemar's chi-squared = 10, df = 1, p-value = 0.001565
+```
+ 

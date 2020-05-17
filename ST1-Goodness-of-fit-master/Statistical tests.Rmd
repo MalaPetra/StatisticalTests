@@ -1,0 +1,501 @@
+---
+title: "Exact test of goodness-of-fit"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE)
+```
+
+```{r packages and libraries, message=FALSE, warning=FALSE}
+#install.packages("XNomial")
+#install.packages("pwr")
+#install.packages("BSDA")
+
+library(XNomial)
+library(pwr)
+library(BSDA)
+```
+
+
+# Introduction
+
+*When is it used?*
+
+It is used when we have **one nominal variable and when we want to see whether the number of observations in each category fits a theoretical expectation and the sample size is small**.
+
+The main goal is to answer the question: **"What is the probability of getting a result like my observed data?"**
+
+The most common use is a nominal variable with only two values (test may be called the exact binominal test).
+
+We compare the observed data with expected data. If the total number of observations is too hight (around a thousand), then we would rather use G-test or chi-square test of goodness-of-fit. When the nominal variable has more than two values, we can do multinomial tests of goodness-of-fit. The basic concepts are the same as for the exact binomial test.
+
+*$H_0$ hypothesis*
+
+- For a **two-tailed test**, the null hypothesis is that the number of observations in each category is **equal** to that predicted and the alternative hypothesis is that the boserved data are   different from the expected.
+
+- For a **one-tailed test**, the null hypothesis is that the observed number for one category is **equal to or less** than the expected and the alternative hypothesis is that the observed        number in that category is greater than expected.
+
+# Scenario
+
+Does my cat have a preference for one paw or uses both paws equally?
+
+Expected values: He uses his paws equally 1:1
+
+Data collection: He bats at the ribbon with his right paw 8 times and his left paw 2 times.
+
+What is the probability of getting exactly 8 out of 10 right paws?
+
+# Application
+
+Calculate the exact probability that my cat will use his left paw twice:
+
+```{r message=FALSE, warning=FALSE}
+# first number is whichever event there are fewer than expected of
+# second number is the total number of trials
+# third number is the expected proportion of whichever event there were fewer than expected of
+
+# this is a probability of getting exactly 2 left paws and 8 right paws
+
+dbinom(2,10,0.5) # Probability of single event only! Not binomial test!
+```
+
+Calculate the exact probability that my cat will use his left paw twice or less:
+
+```{r}
+pbinom(2,10,0.5)
+# Calculates the sum of the probabilities of the observed number and it gives the total probability of getting 2,1, or 0 uses of the left paw out of 10.
+```
+
+Probability that my cat will use his left paw twice or less OR his right paw twice or less (both extremes):
+
+```{r}
+# Adding the probability of getting 2,1, or 0 uses of the right paw, to account for both tails of the probability distribution; two-tailed test
+
+# H0: The number of uses of the right paw is equal to the number of uses of the left paw
+# H1: Thu number of uses of the left paw is not equal to the number of uses of the right paw
+
+binom.test(2,10,0.5, alternative="two.sided", conf.level=0.95)
+# not significant
+```
+
+One-tailed test:
+
+```{r}
+#H0: There is 0.5 or more uses of the left paw
+#H1: There is 0.5 or less uses of the left paw
+
+binom.test(2,10,0.5, alternative="less", conf.level=0.95)
+# not significant
+```
+
+Probability density plot:
+
+```{r}
+# I can change the values for trials and prob
+# I can change the values for xlab and ylab
+
+trials = 10
+prob = 0.5
+
+x = seq(0, trials)                  
+# x is a sequence, 1 to trials
+y = dbinom(x, size=trials, p=prob)   
+# y is the vector of heights
+
+barplot (height=y, 
+         names.arg=x,
+         xlab="Number of uses of right paw",
+         ylab="Probability under null hypothesis")
+```
+
+# When the null hypothesis is not a 1:1 ratio
+
+Comparing doubling a one-sided test and using a two-sided test:
+
+```{r}
+# used when the ratio is not 1:1 but something like 3:1 we don't use two-side test as above
+# calculate same as above which event is less common that expected and then multiply it by two.
+
+pbinom(7,12,3/4) # probability of getting 7 or fewer short-haired cats; by multiplying this by 2, I'll get p value for two-tailed test
+
+
+Test = binom.test(7, 12, 3/4,             
+                  # Create an object called
+                  alternative="less",     
+                  #  Test with the test
+                  conf.level=0.95)       
+#  results.
+
+2 * Test$ p.value  # 31.52
+
+# This extracts the p-value from the
+#   test result, we called Test
+#   and multiplies it by 2
+
+# alternatively:
+# You calculate the probability of obtaining exactly 7 out of 12 short-haired cats:
+
+dbinom(7,12,3/4)# probability getting exactly 7 out of 12.
+
+# Then you calculate the probabilities for every other possible number of short-haired cats, and you add together those that are less than 0.103 and in the other tail, only the probability of 12 out of 12 short-haired cats
+
+binom.test(7, 12, 3/4, alternative="two.sided", conf.level=0.95) # 18.9
+# small-p, 
+```
+
+# Post-hoc test
+
+If you perform the exact multinomial test (with more than two categories) and get a significant result, you may want to follow up by testing wheather each category deviates significantly from expected.
+
+```{r}
+observed = c(72, 38, 20, 18) # flowers
+expected = c(9,3,3,1) # proportion of flowers
+
+# library(XNomial)
+
+xmulti(observed, expected, detail = 2)
+# You do the exact test and get a P value of 0.0016, so you reject the null hypothesis.
+```
+
+```{r}
+# do an exact binomial test for each category vs. the sum of all the other categories
+
+success = 72 # 72 purple flowers
+total = 148
+numerator = 9
+denominator = 16
+
+binom.test(success, total, numerator/denominator,
+           alternative = "two.sided", conf.level=0.95)
+# p-value = 0.068
+
+success = 38 # 38 red flowers
+total = 148
+numerator = 3
+denominator = 16
+
+binom.test(success, total, numerator/denominator,
+           alternative = "two.sided", conf.level=0.95)
+
+# p-value = 0.03504
+# This is below the significance level of 0.05, but because we’re doing 4 tests at the same time, wee need to divide the significance level (0.05) by the number of comparisons (4) and get a new significance level of 0.0125; since 0.035 is greater than this, we can’t say there are significantly more red flowers than expected.
+
+success = 20 # 20 blue flowers
+total = 148
+numerator = 3
+denominator = 16
+
+binom.test(success, total, numerator/denominator,
+           alternative = "two.sided", conf.level=0.95)
+# p-value = 0.1139
+
+success = 18 # 18 white flowers
+total = 148
+numerator = 1
+denominator = 16
+
+binom.test(success, total, numerator/denominator,
+           alternative = "two.sided", conf.level=0.95)
+# p-value = 0.006057
+# There are significantly more white flowers than expected
+```
+
+# Assumptions
+
+- individual observations are independend - value of one observation does not influecne the value of other observations
+
+# Other Examples
+
+## Example 1:
+
+Place female wasps in the base of a Yshaped
+tube, with a different odor in each arm of the Y. 10 wasps entered the area with the adult beetles, while 17 entered the area with the larval beetles.
+
+H0: The difference is as expected in ration 1:1
+H1: The difference is different from expected 1:1
+
+```{r}
+binom.test(10,27,0.5, alternative="two.sided", conf.level=0.95)
+# The difference from the expected 1:1 ratio is not significant.
+```
+
+## Example 2:
+
+Compare infested bark with a mixutre of infested and uninfested bark, 36 wasps moved towards the infested bark, while only 7 moved towareds the mixture
+
+```{r}
+binom.test(36, 41, 0.5, alternative = "two.sided",
+           conf.level = 0.95)
+
+# there is a significant difference from expected ratio
+```
+
+## Example 3:
+
+There are 30 male and 30 female of flies from Alabama mixed with 30 male and 30 females from Grand Bahama Island. There were 140 matings; 140 were homotypic (male and female from the same location) and 106 heterotypic (male and female from different locations).
+
+H0: The flies mate at random, equal number of homotypic and heterotypic matings
+
+```{r}
+binom.test(140, 246, alternative = "two.sided",
+           conf.level = 0.95)
+# There were significantly more homotypic mattings than heterotypic.
+```
+
+## Example 4 (Sign test):
+
+Estimate the evalutionary tree of two subfamilies of beetles that burrow inside trees as adults.
+
+You have ten pairs of sister groups in which one group of related species, or "clade" fed on angiosperms and one fed on gymnosperms.
+
+There are two nominal variables:
+
+- food source (angiosperms or gymnosperms)
+- pair of clades - corthylina vs pityophthorus
+- one measurement variable - the number of species per clade
+
+H0: Although the number of species per clade may vary widely due to a variety of unknown factors, source of food is not one of these factors;
+
+We expect that each pair of related clades will differ in number of species, but half the time the angiosperm-feeding clade will have more species, and half the time the gymnosperm-feeding clade will have more species.
+
+There are 10 pairs of clades in which the angiosperm-specialized clade has more species
+0 pairs with more species in the gymnosperm-specialiszed clade;
+
+```{r}
+Input =("
+Row  Angiosperm.feeding  A.count  Gymonsperm.feeding   G.count
+1    Corthylina           458     Pityophthorus           200
+2    Scolytinae          5200     Hylastini_Tomacini      180
+3    Acanthotomicus_P     123     Orhotomicus              11
+4    Xyleborini_D        1500     Ipini                   195
+5    Apion               1500     Antliarhininae           12
+6    Belinae              150     Allocoryninae_Oxycorinae 30
+7    H_Curculionidae    44002     Nemonychidae             85
+8    H_Cerambycidae     25000     Aseminae_Spondylinae     78
+9    Megalopodinae        400     Palophaginae              3
+10   H_Chrysomelidae    33400     Aulocoscelinae_Orsod     26
+")
+
+Data = read.table(textConnection(Input),header=TRUE)
+```
+
+```{r}
+# library(BSDA)
+SIGN.test(x=Data$A.count,
+          y=Data$G.count,
+          md=0,
+          alternative = "two.sided",
+          conf.level = 0.95)
+# We can reject the null hypothesis and conclude that in these beetles, clades that feed on angiosperms tento to have more species than clades that feed on gymnosperms.
+```
+
+## Example 5
+
+Mendel crossed pea plants that were heterozygotes for green pod/ yellow pod.
+
+Pod color is the nominal variable - green and yellow
+Green is dominant over yellow, the expected ratio in the offspring is 3 green: 1 yellow.
+
+We have 428 green and 152 yellow observations.
+The expected numbers of platns under the null hypothesis are 435 green and 145 yellow
+
+```{r}
+binom.test(428, (428+152), 0.75, alternative="two.sided",
+conf.level=0.95)
+
+#OR
+
+observed=c(428,152)
+expected=c(3,1)
+
+# library(XNomial)
+
+xmulti(observed,
+       expected,
+       detail=2)
+
+# 0.5331 = log=likelihood ratio
+# 0.5022 = exact probability
+# 0.5331 = Chi-square probability
+```
+The P value is 0.533, indicating that the null hypothesis cannot be rejected;  there is no significant difference
+between the observed and expected frequencies of pea plants with green pods.
+
+## Example 6:
+
+Mendel (1865) also crossed peas that were heterozygous at two genes: one for yellow
+vs. green, the other for round vs. wrinkled; yellow was dominant over green, and round
+was dominant over wrinkled. The expected and observed results were:
+
+```{r}
+
+Input =("
+Row             expected.ratio  expected.number  observed.number   
+yellow+round    9               312.75           315           
+green+round     3               104.25           108      
+yellow+wrinkled 3               104.25           101              
+round+wrinkled  1               34.75            32                   
+")
+```
+
+```{r}
+observed = c(315,108,101,32)
+expected = c(9,3,3,1)
+
+library(XNomial)
+
+xmulti(observed,
+       expected,
+       detail=2)
+# exact multinomial test, since there are four categories, not two. The p=value is 0.93, so the difference between observed and expected is nowhere near significance.
+```
+
+## Similar tests
+
+A G–test or chi-square goodness-of-fit test could also be used for the same data as the
+exact test of goodness-of-fit. Where the expected numbers are small, the exact test will
+give more accurate results than the G–test or chi-squared tests. Where the sample size is
+large (over a thousand), attempting to use the exact test may give error messages
+(computers have a hard time calculating factorials for large numbers), so a G–test or chisquare
+test must be used. For intermediate sample sizes, all three tests give approximately
+the same results. 
+
+The exact test of goodness-of-fit is not the same as Fisher’s exact test of independence.
+You use a test of independence for two nominal variables, such as sex and location. If you
+wanted to compare the ratio of males to female students at Delaware to the male:female
+ratio at Maryland, you would use a test of independence; if you want to compare the
+male:female ratio at Delaware to a theoretical 1:1 ratio, you would use a goodness-of-fit
+test.
+
+## Power analysis - cat example
+
+Before you do an experiment, you should do a power analysis to estimate the sample size you’ll need.
+
+```{r}
+P0 = 0.50 # null hypotheses, using his left paw 0.5, constant proportion
+P1 = 0.40 # decide that probability of him using his left paw is 0.40
+H  = ES.h(P0,P1)               # This calculates effect size
+
+# library(pwr)
+
+pwr.p.test(
+       h=H, 
+       n=NULL,                  # NULL tells the function to
+       sig.level=0.05,          #     calculate this value
+       power=0.80,              # 80% probability of getting significant
+       alternative="two.sided")
+# If he uses his left paw 60% of the time, you'll accept that as a significant result too, so it's a two-tailed test.
+```
+
+The result is 193. This means that if my cat really is using his left paw 40% (or 60%) of the time, a sample size of 199 observations will have an 80% probability of giving you a significant (P<0.05) exact
+binomial test.
+
+# Power Analysis
+
+Before we do an experiment, you should perform a power analysis to estimate the number of observations in order to have a good chance of detecting the effect we're looking for (different power tests based on the method).
+
+Power Analysis estimates how big sample I need in order to prove test significant - e.g.proving that children vaccination leads to an increase in autism would require all vaccinated and same number of unvaccinated children in U.S. between age of 3 and 6, there would have to be 25% more autism in one group in order to have a high chance of seeing a significant difference.
+
+There are 4 or 5 numbers involed in power analysis:
+
+- **Effect size** - The effect size is the minimum deviation from the null hypothesis that you hope to detect. For example, if you are treating hens with something that you hope will change the sex ratio of their chicks, you might decide that the minimum change in the proportion of sexes that you’re looking for is 10%. You would then say that your effect size is 10%. If you’re testing something to make the hens lay more eggs, the effect size might be 2 eggs per month. 
+
+- **Alpha** - significance level of the test (p value)
+
+- **Beta or power** - probability of accepting the null hypothesis, even though it is false (false negative). Power is 1-beta. A power of 80% (equivavelent to a beta of 20%) is the most common.  The cost to you of a false negative should influence your choice of power; if you really, really want to be sure that you detect your effect size, you’ll want to use a higher value for power (lower beta), which will result in a bigger sample size. 
+
+- **Standard deviation** - for measurement variables, you need to estimate of the standard deviation. As standard deviation gets begger, it gets harder to detect a significant difference, so I'll need a bigger size.
+
+## Power Analysis Example 1
+
+You plan to cross peas that are heterozygotes for Yellow/green pea color, where
+Yellow is dominant. 
+
+**The expected ratio** in the offspring is **3 Yellow: 1 green**. You want to
+know whether yellow peas are actually more or less fit, which might show up as a
+different proportion of yellow peas than expected. 
+
+You arbitrarily decide that you want a sample size that will detect a significant (P<0.05) difference **if there are 3% more or fewer**
+yellow peas than expected, with a **power of 90%**. 
+
+You will test the data using the exact binomial test of goodness-of-fit if the sample size is small enough, or a G–test of goodnessof-fit
+if the sample size is larger. The power analysis is the same for both tests. 
+
+**Solution:**
+
+I need to know if there are 3% more or less of yellow peas. The proportion of yellow peas is 75%.
+
+```{r}
+# power analysis for binomial test
+library(pwr)
+P0=0.75
+P1=0.78
+H = ES.h(P0,P1) # Effect size
+
+pwr.p.test(
+       h=H, 
+       n=NULL,                  # NULL tells the function to
+       sig.level=0.05,          #     calculate this
+       power=0.90,              # 1 minus Type II probability
+       alternative="two.sided")
+
+# n = 2,096.953
+
+# If I want to identify the difference by 0.1%, then the sample size is 1,967,510.
+```
+
+## Power Analysis Example 2
+
+The example data for the two-sample t–test shows that:
+
+- the average height s was 66.6 inches,
+- and the average height in the 5 p.m.section was 64.6 inches,
+- the difference is not significant (P=0.207). 
+
+You want to know how many students you’d have to sample to have an 80% chance of a difference this large
+being significant. Using G*Power as described on the two-sample t–test page, enter 2.0 for
+the difference in means. 
+
+Standard deviation for each sample in the original data; it is 4.8 for sample 1 and 3.6 for sample 2.
+
+The result is 72, meaning that if 5 p.m. students really were two inches shorter than 2 p.m. students, you’d need 72 students in each class
+to detect a significant difference 80% of the time, if the true difference really is 2.0 inches. 
+
+``` {r}
+# Power Analysis for upaired t-test => t-test
+
+M1  = 66.6                      # Mean for sample 1
+M2  = 64.6                      # Mean for sample 2
+S1  =  4.8                      # Std dev for sample 1
+S2  =  3.6                      # Std dev for sample 2
+
+Cohen.d = (M1 - M2)/sqrt(((S1^2) + (S2^2))/2)  
+                                         
+                                   
+pwr.t.test(
+       n = NULL,                  # Observations in _each_ group
+       d = Cohen.d,            
+       sig.level = 0.05,          # Type I probability
+       power = 0.80,              # 1 minus Type II probability
+       type = "two.sample",       # Change for one- or two-sample
+       alternative = "two.sided"
+       )
+
+# The result is 72, meaning that if 5 p.m. students really were two inches shorter than 2 p.m. students, you’d need 72 students in each class to detect a significant difference 80% of the time, if the true difference really is 2.0 inches. 
+```
+
+When the sample sizes are too small, you should use exact tests instead of the chisquare
+test or G–test. 
+
+One solution to this problem is to use Yates’ correction for continuity, sometimes just known as the continuity correction. To do this, you subtract 0.5 from each observed value that is greater than the expected, add 0.5 to each observed value that is less than the expected, then do the chi-square or G–test. This only applies to tests with one degree of freedom: goodness-of-fit tests with only two categories, and 2×2 tests of independence. 
+
+It works quite well for goodness-of-fit, yielding P values that are quite close to those of the exact binomial. For tests of independence, Yates’ correction yields P values that are too high.
+
+Another correction that is sometimes used is Williams’ correction. Unlike Yates’ correction, it can be applied to tests with more than one degree of freedom. For the numbers I’ve tried, it increases the  value a little, but not enough to make it very much closer to the more accurate P value provided by the exact test of goodness-of-fit or Fisher’s exact test.
+ 
+![](~/documents/GitHub/Exact-test-of-goodness/overview.png)

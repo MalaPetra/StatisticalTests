@@ -1,0 +1,511 @@
+---
+title: "Chi-square test of independence"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE)
+
+
+#install.packages("rcompanion")
+
+
+library(rcompanion)
+library(dplyr)
+library(ggplot2)
+library(grid)
+library(pwr)
+library(dplyr)
+```
+
+
+# Introduction
+
+The chi-square test of independence is used when we have two nominal variables (each with two or more possible values) and we want to see whether the proportions of one variable are different for different values of the other variable. It is used when the sample size is large.
+
+**Example:**
+
+Jackson et al. (2013) wanted to know whether it is better to give the diphtheria, tetanus and pertussis (DTaP)
+vaccine in either the thigh or the arm, so they collected data on severe reactions to this
+vaccine in children aged 3 to 6 years old.
+
+One nominal variable is severe reaction vs. no severe reaction; the other nominal variable is thigh vs. arm.
+
+```{r}
+
+Input =("
+Injection.area  No.severe  Severe
+Thigh           4758       30
+Arm             8840       76
+")
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1))
+```
+
+There is a higher proportion of severe reactions in children vaccinated in the arm; a chisquare
+of independence will tell you whether a difference this big is likely to have occurred by chance.
+
+A data set like this is often called an "RxC table" where:
+
+- R is the number of rows
+- C is the number of columns
+
+This is a 2x2 table.
+
+It is also possible to do a chi-square test of independence with more than two nominal
+variables. This experimental design doesn't occur very often and it can get complicated.
+
+**Fisher’s exact test** is more accurate than the chi-square test of independence when the
+expected numbers are small, so I only recommend the chi-square test if your total sample
+size is greater than 1000. 
+The chi-square test of independence is an alternative to the G–test of independence,
+and they will give approximately the same results.
+
+# Null hypothesis
+
+The null hypothesis is that the relative proportions of one variable are independent of the second variable; in other words, the proportions at one variable are the same for different values of the second variable. 
+
+**Example:** In the vaccination example, the null hypothesis is that the proportion of children given thigh injections who have severe reactions is equal to the proportion of children given arm injections who have severe reactions.
+
+# How the test works
+
+The math of the chi-square test of independence is the same as for the chi-square test of goodness-of-fit, only the method of calculating the expected frequencies is different. 
+
+For the goodness-of-fit test, you use a theoretical relationship to calculate the expectedfrequencies. 
+For the test of independence, you use the **observed frequencies** to calculate the expected. 
+
+For the vaccination example:
+
+There are 13704 total children (4758+8840+30+76), and 106 of them had reactions (30+76).
+
+H0: 106/13704 = 0.7735% of the children given injections in the thigh would have reactions, and
+0.7735% of children given injections in the arm would also have reactions. 
+
+There are 4788 children given injections in the thigh (4758+30), so you expect 0.007735×4788 = 37 of
+the thigh children to have reactions, if the null hypothesis is true. 
+
+You could do the same kind of calculation for each of the cells in this 2×2 table of numbers.
+Once you have each of the four expected numbers, you could compare them to the observed numbers using the chi-square test, just like you did for the chi-square test of goodness-of-fit. 
+
+The result is chi-square = 2.04
+To get the P value, you also need the number of degrees of freedom.  The degrees of freedom in a test of independence are equal to **(number of rows–1) × (number of columns)–1**. Thus for a 2×2 table, there are (2–1) × (2–1)=1 degree of freedom; for a 4×3 table, there are (4–1) × (3–1)=6 degrees of freedom. 
+
+
+```{r}
+#Pearson's Chi-squared test with Yates' continuity correction
+
+chisq.test(Matriz,
+           correct=TRUE)      # Continuity correction for 2 x 2
+                              #      table
+
+ #X-squared = 1.7579, df = 1, p-value = 0.1849
+```
+## Using Matrix
+```{r}
+
+#Pearson's Chi-squared test 
+
+chisq.test(Matriz,
+           correct=FALSE)      # No continuity correction for 2 x 2
+                               #      table
+
+ 
+#X-squared = 2.0396, df = 1, p-value = 0.1533
+# this method has  been used in the book
+```
+
+For chi-square=2.04 with 1 degree of freedom, the P value is 0.15, which is not significant; you cannot conclude that 3-to-6-year old children given DTaP vaccinations in the thigh have fewer reactions that those given
+injections in the arm. 
+
+## Using data frame
+
+```{r}
+Input =("
+Genotype  Health       Count
+ins-ins   no_disease   268
+ins-ins   disease      807
+ins-del   no_disease   199
+ins-del   disease      759
+del-del   no_disease    42
+del-del   disease      184
+")
+
+Data.frame = read.table(textConnection(Input),header=TRUE)
+
+
+###  Cross-tabulate the data
+
+Data.xtabs = xtabs(Count ~ Genotype + Health, 
+                   data=Data.frame); Data.xtabs
+
+```
+
+```{r}
+summary(Data.xtabs) # includes N and factors
+
+#  Chi-square test of independence
+        
+chisq.test(Data.xtabs)
+
+# X-squared = 7.2594, df = 2, p-value = 0.02652
+```
+
+# Post-hoc tests
+
+Whe the chi-square test of a table larger than 2x2 is significant, it is desirable to investigate the data a bit further.
+
+**Option 1:**
+
+```{r}
+# data
+
+Input =("
+Supplement     No.cancer  Cancer
+'Selenium'     8177       575
+'Vitamin E'    8117       620
+'Selenium+E'   8147       555
+'Placebo'      8167       529
+")
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1)); Matriz
+
+# test
+chisq.test(Matriz)
+```
+
+Althought the test is not significant by a tiny bit, it is worthwhile to follow up to see if there is anything interesting.
+
+There are six possible pairwise comparissons, we can do 2x2 chi-square test for each one and get the following results:
+
+```{r}
+#library(rcompanion)
+
+pairwiseNominalIndependence(Matriz,
+                            fisher = FALSE,
+                            gtest  = FALSE,
+                            chisq  = TRUE,
+                            method = "fdr")
+```
+ 
+Because there are six comparisons, the Bonferroni-adjusted p value needed for significance is 0.05/6 = 0.008 (I can also use adjusted column and compare to p<0.05)
+
+The P value for vitamin E vs. the palcebo is less than 0.008, so we can say that there were significantly more cases of prostate cancer in men taking vitamin E than men taking placebo.
+
+**Example 2:**
+
+```{r}
+# data
+
+Input=("
+Bird  Remnant Restored
+'Ruby-crowned kinglet' 677 198
+'White-crowned sparrow' 408 260
+'Lincoln’s sparrow' 270 187
+'Golden-crowned sparrow' 300 89
+'Bushtit' 198 91
+'Song Sparrow' 150 50
+'Spotted towhee' 137 32
+'Bewick’s wren' 106 48
+'Hermit thrush' 119 24
+'Dark-eyed junco' 34 39
+'Lesser goldfinch' 57 15
+'Uncommon' 457 125")
+
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1)); Matriz
+
+# test
+chisq.test(Matriz)
+```
+
+The overall table yields a chi-square value of 149.8 with 11 degrees of freedom, which
+is highly significant (P=2×10–26). That tells us there’s a difference in the species composition
+between the remnant and restored habitat, but it would be interesting to see which species
+are a significantly higher proportion of the total in each habitat. 
+
+# Examples
+
+## Example 1: Wearing helmets
+
+Bambach et al. (2013) analyzed data on all bicycle accidents involving collisions with motor vehicles in New South Wales, Australia during 2001-2009.
+
+```{r}
+Input =("
+PSE        Head.injury  Other.injury
+Helmet     372          4715
+No.helmet  267          1391
+")
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1)); Matriz
+```
+
+```{r}
+# Pearson's Chi-squared test with Yates' continuity correction
+
+chisq.test(Matriz,
+           correct=TRUE)       # Continuity correction for 2 x 2
+                               #      table
+ # X-squared = 111.6569, df = 1, p-value < 2.2e-16
+```
+ 
+
+```{r} 
+# Pearson's Chi-squared test
+
+chisq.test(Matriz,
+           correct=FALSE)      # No continuity correction for 2 x 2
+                               #      table
+# X-squared = 112.6796, df = 1, p-value < 2.2e-16
+
+```
+
+The results are chi-square=112.7, 1 degree of freedom, P=3×10–26, meaning that bicyclists who were not wearing a helmet have a higher proportion of head injuries.
+
+## Example 2
+
+Gardemann et al. (1998) surveyed genotypes at an insertion/deletion polymorphism
+of the apolipoprotein B signal peptide in 2259 men. The nominal variables are genotype (ins/ins, ins/del, del/del) and coronary artery disease (with or without disease). 
+
+The data are:
+
+```{r}
+Input =("
+Genotype  No.disease Coronary.disease 
+'ins/ins'   268        807
+'ins/del'   199        759
+'del/del'    42        184
+")
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1)); Matriz
+```
+
+```{r}
+chisq.test(Matriz)
+```
+
+H0: The apolipoprotein polymorphism doesn’t affect the likelihood of getting coronary artery disease. The statistical null hypothesis is that the proportions of men with coronary artery disease are the same for each of the three
+genotypes.
+
+The result is chi-square=7.26, 2 d.f., P=0.027. This indicates that you can reject the null hypothesis; the three genotypes have significantly different proportions of men with coronary artery disease. 
+
+# Visualisation 
+(*only if needed later, code is only saved here for demonstration, I didn't write the code*)
+
+
+## Example 1
+```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+Input =("
+Habitat      Bird   Count
+Vegetation   Heron   15
+Shoreline    Heron   20
+Water        Heron   14
+Structures   Heron    6
+Vegetation   Egret    8
+Shoreline    Egret    5
+Water        Egret    7
+Structures   Egret    1
+")
+  
+Birds = read.table(textConnection(Input),header=TRUE)
+```
+
+```{r include=FALSE}
+# Specify the order of factor levels
+
+Birds= mutate(Birds,
+       Habitat = factor(Habitat,levels=unique(Habitat)),
+       Bird = factor(Bird,levels=unique(Bird))
+       )
+```       
+
+```{r include=FALSE}
+# Add sums and proportions
+
+Birds$ Sum[Birds$ Bird == 'Heron'] = sum(Birds$ Count[Birds$ Bird == 'Heron'])
+# create a columnt[with this condition] = sum(count in this [condition])
+
+Birds$ Sum[Birds$ Bird == 'Egret'] = sum(Birds$ Count[Birds$ Bird == 'Egret'])
+
+Birds=
+mutate(Birds,
+       prop = Count / Sum
+       )
+
+Birds
+
+``` 
+
+```{r echo=FALSE}
+### Plot adapted from:
+### shinyapps.stat.ubc.ca/r-graph-catalog/
+
+ggplot(Birds, 
+  aes(x = Habitat, y = prop, fill = Bird, ymax=0.40, ymin=0)) +
+  geom_bar(stat="identity", position = "dodge", width = 0.7) +
+  geom_bar(stat="identity", position = "dodge", colour = "black",
+           width = 0.7) +
+  scale_y_continuous(breaks = seq(0, 0.40, 0.05), 
+                     limits = c(0, 0.40), 
+                     expand = c(0, 0)) +
+  scale_fill_manual(name = "Bird type" , 
+                    values = c('grey80', 'grey30'), 
+                    labels = c("Heron (all types)", 
+                               "Egret (all types)")) +
+  ## geom_errorbar(position=position_dodge(width=0.7), 
+  ##               width=0.0, size=0.5, color="black") +
+  labs(x = "Habitat Location", y = "Landing site proportion") +
+  ## ggtitle("Main title") + 
+  theme_bw() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.major.y = element_line(colour = "grey50"),
+        plot.title = element_text(size = rel(1.5), 
+                                  face = "bold", vjust = 1.5),
+        axis.title = element_text(face = "bold"),
+        legend.position = "top",
+        legend.title = element_blank(),
+        legend.key.size = unit(0.4, "cm"),
+        legend.key = element_rect(fill = "black"),
+        axis.title.y = element_text(vjust= 1.8),
+        axis.title.x = element_text(vjust= -0.5)
+       )
+```
+
+## Example 2
+
+Adding sum and confidence intervals:
+
+```{r include=FALSE}
+Input =("
+Supplement     No.cancer  Cancer
+'Selenium'     8177       575
+'Vitamin E'    8117       620
+'Selenium+E'   8147       555
+'Placebo'      8167       529
+")
+  
+Prostate = read.table(textConnection(Input),header=TRUE)
+
+
+Prostate = mutate(Prostate,
+       Sum = No.cancer + Cancer)
+
+Prostate =
+mutate(Prostate,
+       Prop = Cancer / Sum,
+       low.ci = apply(Prostate[c("Cancer", "Sum")], 1,
+                function(y) binom.test(y['Cancer'], y['Sum'])$ conf.int[1]),
+       # an array, over the row
+       high.ci = apply(Prostate[c("Cancer", "Sum")], 1,
+                function(y) binom.test(y['Cancer'], y['Sum'])$ conf.int[2])
+       )
+
+Prostate
+```
+
+```{r echo=FALSE}
+ggplot(Prostate, 
+ aes(x=Supplement, y=Prop)) + 
+ geom_bar(stat="identity", fill="gray40", 
+          colour="black", size=0.5,
+          width=0.7) +
+ geom_errorbar(aes(ymax=high.ci, ymin=low.ci), 
+                   width=0.2, size=0.5, color="black") +
+ xlab("Supplement") +
+ ylab("Prostate cancer proportion") +
+ scale_x_discrete(labels=c("Selenium", "Vitamin E",
+                           "Selenium+E","Placebo")) +
+ ## ggtitle("Main title") +
+ theme(axis.title=element_text(size=14, color="black", 
+                               face="bold", vjust=3)) +
+ theme(axis.text = element_text(size=12, color = "gray25",
+                                face="bold")) +
+ theme(axis.title.y = element_text(vjust= 1.8)) +
+ theme(axis.title.x = element_text(vjust= -0.5))
+
+#Bar plot of proportions vs. categories.  Error bars indicate 95% confidence intervals for  observed proportion.
+```
+ 
+# Similar tests
+ 
+ There are several tests that use chi-square statistics. The one described here is formally known as Pearson’s chi-square. It is by far the most common chi-square test, so it is usually just called the chi-square test.
+
+The chi-square test may be used both:
+
+- as a test of goodness-of-fit (comparing frequencies of one nominal variable to theoretical expectations) 
+- as a test of independence (comparing frequencies of one nominal variable for different values of a second nominal variable).
+
+The underlying arithmetic of the test is the same; the only difference is the way you calculate the expected values. However, you use goodness-of-fit tests and tests of independence for quite different experimental designs and they test
+different null hypotheses, so I treat the chi-square test of goodness-of-fit and the chisquare
+test of independence as two distinct statistical tests.
+
+If the expected numbers in some classes are small, the chi-square test will give inaccurate results. In that case, you should use **Fisher’s exact test**. **We should use  chi-square test only when the total sample size is greater than 1000, and using Fisher’s exact test for everything smaller than that**.
+
+**If the samples are not independent, but instead are before-and-after observations on the same individuals, you should use McNemar’s test.**
+
+# Power Analysis
+
+If each nominal variable has just two values **(a 2×2 table)**, use the power analysis for Fisher’s exact test. 
+It will work even if the sample size you end up needing is too big for a Fisher’s exact test.
+
+For a test with **more than 2 rows or columns**, use G*Power to calculate the sample size needed for a test of independence. 
+
+Example: Let’s say you’re looking for a relationship between bladder cancer and genotypes at a polymorphism in the catechol-O-methyltransferase gene in humans. In the population you’re studying, you know that the genotype frequencies in people without bladder cancer are 0.36 GG, 0.48 GA, and 0.16 AA; you want to know how many people
+with bladder cancer you’ll have to genotype to get a significant result if they have 6%
+more AA genotypes.
+
+**Results in the following example differ significantly, depends on the effect size**
+
+```{r}
+Input =("
+Genotype  No.cancer Cancer
+GG        0.36      0.33 
+GA        0.48      0.45 
+AA        0.16      0.22 
+")
+# 36%, 48%, 16% => no cancer
+
+P = as.matrix(read.table(textConnection(Input),
+              header=TRUE, 
+              row.names=1))
+
+# Effect size
+## Solution 1 based on G*Power
+
+effect.size = ES.w1(c(0.36,0.48,0.16), 
+                    c(0.33,0.45,0.22)
+                    ) # Same effect size as from G*Power
+
+## Solution 2 based on rcompanion
+effect.size = ES.w2(P/2) 
+## Probability should be equal to 1
+## Compute effect size w for a two-way probability table    corresponding to the alternative hypothesis in the          chi-squared test of association in two-way contingency      tables
+
+## Solution 3: book states effect size as 0.10838
+
+# Degrees of Freedom
+degrees = (nrow(P)-1)*(ncol(P)-1)  # Calculate degrees of freedom
+
+
+# Test
+pwr.chisq.test(
+       w=effect.size, 
+       N=NULL,            # Total number of observations
+       df=degrees, 
+       power=0.80,        # 1 minus Type II probability
+       sig.level=0.05) 
+
+
+```

@@ -1,0 +1,191 @@
+---
+
+title: "G-test of goodness-of-fit"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message=FALSE)
+```
+
+# Introduction
+
+G-test of goodness-of-fit is also known as likelihood ratio test, the log-likelihood ratio test, or the G-test.
+
+G-test is used when we have one nominal variable with two or more values (such as male and female; red, pink and blue).
+
+You compare the observed counts of numbers of observations in each category with the expected counts, which you calculate using some kind of theoretical expectation (such as a 1:1 sex ratio or a 1:2:1 ratio in a genetic cross).
+
+The statistical null hypothesis is that the number of observations in each category is equal to that predicted by a biological theory, and the alternative hypothesis is that the observed numbers are different from the expected. 
+
+# How the test work
+
+G–test uses the data to calculate a test statistic that measures how far the observed data are from the null expectation. You then use a mathematical relationship, in this case the chi-square distribution, to estimate the probability of obtaining that value of the test statistic.
+
+The G–test uses the log of the ratio of two likelihoods as the test statistic, which is why it is also called a likelihood ratio test or log-likelihood ratio test. 
+
+Once you know the G statistic and the number of degrees of freedom, you can calculate the probability of getting that value of G using the chi-square distribution. The number of degrees of freedom is the number of categories minus one.
+
+The equation is:
+
+$G= 2 * \sum [O * ln(O/E)]$
+
+```{r}
+# crossbill example
+
+observed      = c(1752, 1895)     # observed frequencies
+expected.prop = c(0.5, 0.5)       # expected proportions
+
+degrees = 1                       # degrees of freedom
+
+expected.count = sum(observed)*expected.prop
+
+G = 2 * sum(observed * log(observed / expected.count))
+
+G                          
+
+#5.608512
+
+ 
+pchisq(G, 
+       df=degrees,
+       lower.tail=FALSE)
+```
+
+Result: The result is G=5.61, 1 d.f., P=0.018, indicating that the null hypothesis can be rejected;
+there are significantly more left-billed crossbills than right-billed. 
+
+# Post-hoc test
+
+If there are more than two categories and you want to find out which ones are
+significantly different from their null expectation, you can use the same method of testing
+each category vs. the sum of all categories, with the Bonferroni correction. You use G-tests for each category (describe for the exact test).
+
+# Assumptions
+
+The G–test of goodness-of-fit assumes independence.
+
+# Example: extrinsic hypothesis
+
+## Example 1: Crossbills
+
+Red crossbills (Loxia curvirostra) have the tip of the upper bill either right or left of the lower bill, which helps them extract seeds from pine cones. Some have hypothesized that frequency-dependent selection would keep the number of right and left-billed birds at a 1:1 ratio. 
+
+Groth (1992) observed 1752 right-billed and 1895 left-billed crossbills.
+
+Calculate the expected frequency of right-billed birds by multiplying the total sample size (3647) by the expected proportion (0.5) to yield 1823.5. Do the same for left-billed birds. The number of degrees of freedom when an extrinsic hypothesis is used is the number of classes minus one. In this case, there are two classes (right and left), so there is one degree of freedom.
+
+```{r}
+# G-test goodness-of-fit test with DescTools and RVAideMemoire
+
+#install.packages("DescTools")y
+library(DescTools)
+
+observed = c(1752, 1895)    # observed frequencies
+expected = c(0.5, 0.5)      # expected proportions
+
+
+
+GTest(x=observed,
+      p=expected,
+      correct="none")            # "none" "williams" "yates"
+ 
+
+#Log likelihood ratio (G-test) goodness of fit test
+#G = 5.6085, X-squared df = 1, p-value = 0.01787
+```
+
+```{r}
+#install.packages("RVAideMemoire")
+library(RVAideMemoire)
+
+G.test(x=observed,
+       p=expected)
+# G-test for given probabilities, G=5.6085, p-value=0.01787
+```
+
+Result:The result is G=5.61, 1 d.f., P=0.018, indicating that the null hypothesis can be rejected;
+there are significantly more left-billed crossbills than right-billed. 
+
+## Example 2: Rice
+
+Shivrain et al. (2006) crossed clearfield rice, which are resistant to the herbicide imazethapyr, with red rice, which are susceptible to imazethapyr. They then crossed the hybrid offspring and examined the F2 generation, where they found **772 resistant plants, 1611 moderately resistant plants, and 737 susceptible plants**. 
+
+If resistance is controlled by a single gene with two co-dominant alleles, you would expect a **1:2:1 ratio**. 
+
+```{r}
+# Log likelihood ratio
+observed = c(772, 1611, 737)
+expected = c(0.25, 0.50, 0.25)
+
+# library(DescTools)
+
+GTest(x=observed,
+      p=expected,
+      correct="none")            # "none" "williams" "yates"
+
+ # G = 4.1471, X-squared df = 2, p-value = 0.1257
+```
+
+```{r}
+# G-test for given probabilities
+# library(RVAideMemoire)
+
+G.test(x=observed,
+      p=expected)
+```
+
+Comparing the observed numbers with the 1:2:1 ratio, the G value is 4.15. There are two degrees of freedom (the three categories, minus one), so the P value is 0.126; there is no significant difference from a 1:2:1 ratio.
+
+# Example 3: Bird foraging
+
+Mannan and Meslow (1984) studied bird foraging behavior in a forest in Oregon. In a managed forest, **54% of the canopy volume was Douglas fir, 40% was ponderosa pine, 5% was grand fir, and 1% was western larch**. They made **156 observations** of foraging by redbreasted nuthatches; **70 observations (45% of the total) in Douglas fir, 79 (51%) in ponderosa pine, 3 (2%) in grand fir, and 4 (3%) in western larch**. The biological null
+hypothesis is that the birds forage randomly, without regard to what species of tree they’re in; the statistical null hypothesis is that the proportions of foraging events are equal to the proportions of canopy volume. 
+
+```{r}
+# Log likelihood ratio (G-test) goodness of fit test
+observed = c(70, 79, 3, 4)
+expected = c(0.54, 0.40, 0.05, 0.01)
+
+# library(DescTools)    
+
+GTest(x=observed,
+      p=expected,
+      correct="none")            # "none" "williams" "yates"
+# G = 13.145, X-squared df = 3, p-value = 0.004334
+```
+
+
+```{r}
+# G-test for given probabilities
+
+# library(RVAideMemoire)
+
+G.test(x=observed,
+       p=expected)
+
+ # G = 13.1448, df = 3, p-value = 0.004334
+```
+
+Result: The difference in proportions between observed and expected is significant (G=13.14, 3 d.f., P=0.0043).
+The expected numbers in this example are pretty small, so it would be better to analyze it with an exact test.
+
+# Similar tests
+
+You use the G–test of independence for two nominal variables, not one.
+You have a choice of three goodness-of-fit tests: the exact test of goodness-of-fit, the G– test of goodness-of-fit, or the chi-square test of goodness-of-fit. For small values of the expected numbers, the chi-square and G–tests are inaccurate, because the distribution of the test statistics do not fit the chi-square distribution very well.
+The usual rule of thumb is that you should use the exact test when the smallest expected value is less than 5, and the chi-square and G–tests are accurate enough for larger expected values. 
+
+We can use the exact test when the total sample size is less than 1000. With sample sizes between 50 and 1000 and
+expected values greater than 5, it generally doesn’t make a big difference which test you use, so you shouldn’t criticize someone for using the chi-square or G–test for experiments where I recommend the exact test.
+
+The chi-square test gives approximately the same results as the G–test.
+
+# Power Analysis
+
+Power analysis would be the same as in the “Chi-square Test of Goodness-of-Fit” section.

@@ -1,0 +1,335 @@
+---
+title: "Cochran-Mantel-Haenszel test fo repeated tests of independence"
+output:
+  html_document:
+    toc: true
+    
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE)
+```
+
+# Introduction
+
+The most common situation is that you have multiple 2×2 tables of independence; you’re analyzing the kind of experiment that you’d analyze with a test of independence, and you’ve done the experiment multiple times or at multiple locations. 
+
+There are three nominal variables: 
+
+- the two variables of the 2×2 test of independence, 
+- and the third nominal variable that identifies the repeats (such as different times, different locations, or different studies). 
+
+Example: 
+
+**In the winter**, you recruit 36 volunteers with ankle arthritis, randomly assign 20 to wear the legwarmers under their clothes at all times while the other 16 don’t wear the legwarmers, then after a month you ask them whether their ankles are pain-free or not. 
+
+With just the one set of people, you’d have two nominal variables (legwarmers vs. control, pain-free vs. pain), each with two values, so you’d analyze the data with Fisher’s exact test.
+
+However, let’s say you repeat the experiment **in the spring**, with 50 new volunteers. Then **in the summer** you repeat the experiment again, with 28 new volunteers.
+
+You could just add all the data together and do Fisher’s exact test on the 114 total people, but it would be better to keep each of the three experiments separate. Maybe legwarmers work in the winter but not in the summer, or maybe your first set of volunteers had worse arthritis than your second and third sets. In addition, pooling different studies together can show a “significant” difference in proportions when there isn’t one, or even show the opposite of a true difference. This is known as Simpson’s paradox. For these reasons, it’s better to analyze repeated tests of independence using the Cochran-Mantel-Haenszel test. 
+
+# Null hypothesis
+
+The null hypothesis is that the relative proportions of one variable are independent of the other variable within the repeats; 
+
+H0: The proportion of people feeling pain was the same for legwarmer-wearers and non-legwarmer wearers, after controlling for the time of year. 
+
+H1: The alternative hypothesis is that the proportion of people feeling pain was different for legwarmer and non-legwarmer wearers.
+
+Technically, the null hypothesis of the Cochran–Mantel–Haenszel test is that the odds ratios within each repetition are equal to 1. The odds ratio is equal to 1 when the proportions are the same, and the odds ratio is different from 1 when the proportions are different from each other. 
+
+# Assumptions
+
+In addition to testing the null hypothesis, the Cochran-Mantel-Haenszel test also produces an estimate of the common odds ratio, a way of summarizing how big the effect is when pooled across the different repeats of the experiment. This require assuming that the odds ratio is the same in the different repeats. You can test this assumption using the
+**Breslow-Day test**. **Its null hypothesis is that the odds ratios are equal across the different repeats**.
+
+If some repeats have a big difference in proportion in one direction, and other repeats have a big difference in proportions but in the opposite direction, the Cochran-MantelHaenszel test may give a non-significant result. So when you get a non-significant Cochran-Mantel-Haenszel test, you should perform a test of independence on each 2×2 table separately and inspect the individual P values and the direction of difference to see whether something like this is going on. 
+
+In the legwarmer example, if the proportion of people with ankle pain was much smaller for legwarmer-wearers in the winter, but much higher in the summer, and the Cochran-Mantel-Haenszel test gave a non-significant result, it would be erroneous to conclude that legwarmers had no effect. Instead, you could conclude that legwarmers had an effect, it just was different in the different seasons. 
+
+
+# Examples
+
+# Example 1: Hair whorls
+
+When you look at the back of someone’s head, the hair either whorls clockwise or counterclockwise. Lauterbach and Knight (1927) compared the proportion of clockwise whorls in right-handed and left-handed children. With just this one set of people, you’d have two nominal variables (right-handed vs. left-handed, clockwise vs. counterclockwise), each with two values, so you’d analyze the data with Fisher’s exact test.
+
+However, several other groups have done similar studies of hair whorl and handedness (McDonald 2011):
+
+```{r}
+# Example using read.ftable
+# read.ftable can be fussy about leading spaces.
+
+Input =(
+"                  Group W.Child B.adult PA.white W.men G.soldier
+Whorl      Handed
+Clockwise  Right            708     136      106    109      801
+           Left              50      24       32     22      102
+CounterCl  Right            169      73       17     16      180
+           Left              13      14        4     26       25
+")
+
+Tabla = as.table(read.ftable(textConnection(Input))); ftable(Tabla)     # Display a flattened table
+
+```
+
+You could just add all the data together and do a test of independence on the 4463 total people, but it would be better to keep each of the 8 experiments separate. Some of the studies were done on children, while others were on adults; some were just men, while others were male and female; and the studies were done on people of different ethnic backgrounds. Pooling all these studies together might obscure important differences between them.
+
+```{r}
+# Cochran–Mantel–Haenszel test
+ 
+
+mantelhaen.test(Tabla)
+# Mantel-Haenszel X-squared = 5.9421, df = 1, p-value = 0.01478
+``` 
+
+Overall, left-handed people have a significantly higher proportion of counterclockwise whorls than right-handed people.
+
+```{r}
+# Woolf test
+library(vcd)
+
+oddsratio(Tabla, log=TRUE)            # Show log odds for each 2x2
+``` 
+
+```{r}
+woolf_test(Tabla)                # Woolf test for homogeneity of
+                                 #   odds ratios across strata.
+                                 #   If significant, C-M-H test
+                                 #   is not appropriate
+
+
+
+# X-squared = 22.8165, df = 4, p-value = 0.0001378
+```
+
+```{r}
+# Breslow-Day test
+
+library(DescTools)
+
+BreslowDayTest(Tabla)
+
+# X-squared = 24.7309, df = 4, p-value = 5.698e-05
+```
+
+```{r}
+# Individual Fisher exact tests
+ 
+n = dim(Tabla)[3]
+
+for(i in 1:n){
+   Name = dimnames(Tabla)[3]$Group[i]
+   P.value = fisher.test(Tabla[,,i])$p.value
+   cat(Name, "\n")
+   cat("Fisher test p-value: ", P.value, "\n")
+   cat("\n")
+  }
+
+### Note: "Group" must be the name of the stratum variable
+```
+
+## Example 2: Location
+
+At four estuaries, we collected mussels from inside the estuary and from a marine habitat outside the estuary. There were three common alleles and a couple of rare alleles; based on previous results, the biologically interesting question was whether the Lap94 allele was less common inside estuaries, so we pooled all the other alleles into a “non-94” class.
+
+There are three nominal variables: allele (94 or non-94), habitat (marine or estuarine), and area (Tillamook, Yaquina, Alsea, or Umpqua). The null hypothesis is that at each area, there is no difference in the proportion of Lap94 alleles between the marine and estuarine habitats.
+
+```{r}
+# Using data frame
+
+Input =("
+ Location    Habitat     Allele     Count
+  Tillamook  marine          94     56 
+  Tillamook  estuarine       94     69
+  Tillamook  marine      non-94     40   
+  Tillamook  estuarine   non-94     77
+  Yaquina    marine          94     61  
+  Yaquina    estuarine       94    257
+  Yaquina    marine      non-94     57   
+  Yaquina    estuarine   non-94    301
+  Alsea      marine          94     73  
+  Alsea      estuarine       94     65
+  Alsea      marine      non-94     71   
+  Alsea      estuarine   non-94     79
+  Umpqua     marine          94     71   
+  Umpqua     estuarine       94     48
+  Umpqua     marine      non-94     55    
+  Umpqua     estuarine   non-94     48
+ ")
+
+Data = read.table(textConnection(Input),header=TRUE)
+```
+
+```{r}
+
+# Specify the order of factor levels
+# Otherwise, R will alphabetize them
+
+library(dplyr)
+
+Data =
+mutate(Data,
+       Location = factor(Location, levels=unique(Location)),
+       Habitat = factor(Habitat, levels=unique(Habitat)),
+       Allele = factor(Allele, levels=unique(Allele))
+       )
+
+```
+
+
+```{r}
+### Cross-tabulate the data
+###   Note here, Location is stratum variable (is last)
+###              Habitat x Allele are 2 x 2 tables
+
+
+Data.xtabs = xtabs(Count ~ Allele + Habitat + Location, 
+                   data=Data)
+
+
+ftable(Data.xtabs)                      # Display a flattened table
+
+``` 
+
+```{r}
+# Cochran–Mantel–Haenszel test
+ 
+
+mantelhaen.test(Data.xtabs)
+# Mantel-Haenszel X-squared = 5.0497, df = 1, p-value = 0.02463
+```
+
+We can reject the null hypothesis that the proportion of Lap94 alleles is the same in the marine and estuarine locations.
+
+```{r}
+# Woolf test
+ 
+# library(vcd)
+
+oddsratio(Data.xtabs, log=TRUE)       # Show log odds for each 2x2
+
+
+
+woolf_test(Data.xtabs)               # Woolf test for homogeneity of
+                                     #   odds ratios across strata.
+                                     #   If significant, C-M-H test
+                                     #   is not appropriate
+
+```
+
+```{r}
+# Breslow-Day test
+ 
+# library(DescTools)
+
+BreslowDayTest(Data.xtabs)
+
+```
+
+```{r}
+# Individual Fisher exact tests
+ 
+
+n = dim(Data.xtabs)[3]
+
+for(i in 1:n){
+   Name = dimnames(Data.xtabs)[3]$Location[i]
+   P.value = fisher.test(Data.xtabs[,,i])$p.value
+   cat(Name, "\n")
+   cat("Fisher test p-value: ", P.value, "\n")
+   cat("\n")
+  }
+
+ ### Note: "Location" must be the name of the stratum variable
+```
+ 
+## Example 3: Niacin
+
+Duggal et al. (2010) did a meta-analysis of placebo-controlled studies of niacin and heart disease. They found 5 studies that met their criteria and looked for coronary artery revascularization in patients given either niacin or placebo.
+
+```{r}
+Input =(
+"                 Study FATS AFREGS ARBITER.2 HATS CLAS.1
+Supplement Revasc
+Niacin     Yes           2    4      1         1    2
+           No           46   67     86        37   92
+Placebo    Yes          11   12      4         6    1
+           No           41   60     76        32   93
+")
+
+Tabla = as.table(read.ftable(textConnection(Input)))
+
+ftable(Tabla)                        # Display a flattened table
+
+```
+
+There are three nominal variables: niacin vs. placebo, revascularization vs. no revascularization, and the name of the study. The null hypothesis is that the rate of revascularization is the same in patients given niacin or placebo. The different studies have different overall rates of revascularization, probably because they used different patient populations and looked for revascularization after different lengths of time, so it would be unwise to just add up the numbers and do a single 2×2 test.
+
+```{r}
+# Cochran–Mantel–Haenszel test
+ 
+mantelhaen.test(Tabla)
+```
+
+The result of the Cochran-Mantel-Haenszel test is chi2 MH=12.75, 1 d.f., P=0.00036. Significantly fewer patients
+on niacin developed coronary artery revascularization. 
+
+```{r}
+
+ # Woolf test
+ 
+library(vcd)
+
+oddsratio(Tabla, log=TRUE)           # Show log odds for each 2x2
+``
+
+```{r}
+
+woolf_test(Tabla)                    # Woolf test for homogeneity of
+
+                                     #   odds ratios across strata.
+
+                                     #   If significant, C-M-H test
+
+                                     #   is not appropriate
+
+```
+
+```{r}
+
+# Breslow-Day test
+ 
+library(DescTools)
+
+BreslowDayTest(Tabla)
+```
+
+```{r} 
+# Individual Fisher exact tests
+ 
+n = dim(Tabla)[3]
+
+for(i in 1:n){
+   Name = dimnames(Tabla)[3]$Study[i]
+   P.value = fisher.test(Tabla[,,i])$p.value
+   cat(Name, "\n")
+   cat("Fisher test p-value: ", P.value, "\n")
+   cat("\n")
+  }
+
+ ### Note: "Study" must be the name of the stratum variable
+
+```
+
+# Similar tests
+
+Sometimes the Cochran–Mantel–Haenszel test is just called the Mantel–Haenszel test.
+This is confusing, as there is also a test for homogeneity of odds ratios called the Mantel–Haenszel test, and a Mantel–Haenszel test of independence for one 2×2 table. 
+
+If you have **at least six 2×2 tables**, and you’re only interested **in the direction** of the differences in proportions, not the size of the differences, you could do a **sign test**.
+
+The Cochran–Mantel–Haenszel test for nominal variables is analogous to a **two-way anova or paired t–test** for a measurement variable, or a **Wilcoxon signed-rank test** for rank data. 
+
+In the arthritis-legwarmers example, if you measured ankle pain on a 10-point scale (a measurement variable) instead of categorizing it as pain/no pain, you’d analyze the data with a two-way anova.

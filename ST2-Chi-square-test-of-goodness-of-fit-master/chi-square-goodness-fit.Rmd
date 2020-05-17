@@ -1,0 +1,258 @@
+---
+title: "Chi-square-goodness-fit"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message=FALSE)
+```
+
+# Introduction
+
+You use the chi-square test of goodness-of-fit when you have one nominal variable, you want to see whether the number of observations in each category fits a theoretical expectation, and the **sample size is large**.
+
+Use the chi-square test of goodness-of-fit when you have one nominal variable with
+two or more values (such as red, pink and white flowers). You compare the observed
+counts of observations in each category with the expected counts, which you calculate
+using some kind of theoretical expectation (such as a 1:1 sex ratio or a 1:2:1 ratio in a
+genetic cross).
+If the expected number of observations in any category is too small, the chi-square test
+may give inaccurate results, and you should use an exact test instead. The chi-square test of goodness-of-fit is an alternative to the G–test of goodness-of-fit.
+
+# How does the test work?
+
+Unlike the exact test of goodness-of-fit, the chi-square test does not directly calculate
+the probability of obtaining the observed results or something more extreme. Instead, like
+almost all statistical tests, the chi-square test has an intermediate step; it uses the data to
+calculate a test statistic that measures how far the observed data are from the null
+expectation. You then use a mathematical relationship, in this case the chi-square
+distribution, to estimate the probability of obtaining that value of the test statistic.
+
+Calculating
+$chi^2 = \sum \frac{(O-E)^2}{E})$
+
+O = Observed number
+E = Expected number
+
+The larger the deviation from the null hypothesis, the larger the difference between observed and expected is. Squaring the difference makes them all positive.
+
+The larger the difference between observed and expected, the larger the test statistic becomes.
+
+# Example
+
+H0: Null hypothesis is 3:1 ratio of smooth wings to wrinked wings
+Total observation = 1000
+H0: The proportion of smooth wings to wringkled is 750:250
+
+Observation: 770 flies with smooth wings and 230 flies with wrinkled wings.
+
+```{r}
+observed = c(770, 230)        # observed frequencies
+expected = c(0.75, 0.25)      # expected proportions
+
+chisq.test(x = observed,
+           p = expected)
+# p=0.1441, x-squared = 2.1333
+```
+
+Result:
+
+x-squared=2.1333
+
+The probability of getting a chi-square value of 2.13 with one degree of freedome = 0.144. 
+
+Note:
+*The shape of the chi-square distribution depends on the number of degrees of
+freedom.*
+
+*Extrinsic null hypothesis (the much more common situation, where you
+know the proportions predicted by the null hypothesis before collecting the data), the
+number of degrees of freedom is simply the number of values of the variable, minus one.*
+
+*An intrinsic null hypothesis is one where you estimate one or more parameters from
+the data in order to get the numbers for your null hypothesis.For an intrinsic null hypothesis, the number of degrees of freedom is calculated by taking the number of values of the variable,
+subtracting 1 for each parameter estimated from the data, then subtracting 1 more. 
+
+# Post-hoc test and Assumptions
+
+If there are more than two categories and you want to find out which ones are
+significantly different from their null expectation, you can use the same method of testing
+each category vs. the sum of all other categories, with the Bonferroni correction using chi-square tests for each category.
+
+The chi-square of goodness-of0fit assumes independence.
+
+# Examples - Extrinsic hypothesis
+
+## Example 1
+
+European crossbills (Loxia curvirostra) have the tip of the upper bill either right or left
+of the lower bill.
+
+Some have hypothesized that frequency-dependent selection would keep the number of right and
+left-billed birds at a 1:1 ratio. 
+
+Groth (1992) observed 1752 right-billed and 1895 left-billed crossbills. Total of 3647.
+
+H0: Right and left-billed crossbills are in 1:1 proportion (1823.5 : 1823.5)
+
+```{r}
+```{r}
+observed = c(1752, 1895)        # observed frequencies
+expected = c(0.5, 0.5)      # expected proportions
+
+chisq.test(x = observed,
+           p = expected)
+# p = 0.01789, x-squared = 5.6071
+```
+
+Result: We can reject the null hypothesis; There is significantly more left-billed crossbills than right-billed.
+
+## Example 2
+
+Shivrain et al. (2006) crossed clearfield rice, which are resistant to the herbicide
+imazethapyr, with red rice, which are susceptible to imazethapyr. They then crossed the
+hybrid offspring and examined the F2 generation:
+
+- they found 772 resistant plants, 1611 moderately resistant plants, and 737 susceptible plants (total of 3,120)
+
+H0: If resistance is controlled by a single gene with two co-dominant alleles, you would expect a 1:2:1 ratio.
+
+```{r}
+observed = c(772,1611,737)        # observed frequencies
+expected = c(0.25,0.5,0.25)      # expected proportions
+
+chisq.test(x = observed,
+           p = expected)
+# p = 0.1275, x-squared = 4.1199
+
+```
+
+Result: Comparing the observed numbers with the 1:2:1 ratio, the chi-square value is 4.12. There are two degrees of freedom (the three categories, minus one), so the P value is 0.127; there is no significant difference from a 1:2:1 ratio.
+
+## Example 3
+
+Mannan and Meslow (1984) studied bird foraging behavior in a forest in Oregon. 
+
+In a managed forest, 54% of the canopy volume was Douglas fir, 40% was ponderosa pine, 5%
+was grand fir, and 1% was western larch. 
+
+They made 156 observations of foraging by redbreasted nuthatches; 70 observations (45% of the total) in Douglas fir, 79 (51%) in ponderosa pine, 3 (2%) in grand fir, and 4 (3%) in western larch. 
+
+H0: The statistical null hypothesis is that the proportions of foraging events are
+equal to the proportions of canopy volume. 
+
+```{r}
+observed = c(70,79,3,4)        # observed frequencies
+expected = c(0.54,0.40,0.05,0.01)      # expected proportions
+
+chisq.test(x = observed,
+           p = expected)
+# p = 0.003514, x-squared = 13.593
+```
+
+
+Result: The difference in proportions is significant. The expected numbers in this example are pretty small, so it would be better to analyze it with an exact test.
+
+# Visualisation
+
+If there are just two values of the nominal variable, you shouldn’t display the result in
+a graph, as that would be a bar graph with just one bar. Instead, just report the
+proportion; for example, Groth (1992) found 52.0% left-billed crossbills.
+
+With more than two values of the nominal variable, you should usually present the
+results of a goodness-of-fit test in a table of observed and expected proportions.
+
+If the expected values are obvious (such as 50%) or easily calculated from the data (such as
+Hardy–Weinberg proportions), you can omit the expected numbers from your table. 
+
+For a presentation you’ll probably want a graph showing both the observed and expected
+proportions, to give a visual impression of how far apart they are. You should use a bar
+graph for the observed proportions; the expected can be shown with a horizontal dashed
+line, or with bars of a different pattern.
+
+```{r}
+observed = c(70, 79, 3, 4)
+
+expected = c(0.54, 0.40, 0.05, 0.01)
+
+total = sum(observed)
+
+observed.prop = observed / total
+
+observed.prop
+```
+
+
+## Simple bar plot with barplot
+```{r}
+### Re-enter data as a matrix
+
+Input =("
+Value     Douglas.fir  Ponderosa.pine  Grand.fir   Western.larch
+Observed  0.4487179    0.5064103       0.01923077  0.02564103
+Expected  0.5400000    0.4000000       0.05000000  0.01000000   
+")
+
+Matriz = as.matrix(read.table(textConnection(Input),
+                   header=TRUE, 
+                   row.names=1))
+
+Matriz
+
+```
+
+```{r}
+barplot(Matriz, 
+        beside=TRUE, 
+        legend=TRUE, 
+        ylim=c(0, 0.6),
+        xlab="Tree species",
+        ylab="Foraging proportion")
+
+```
+
+# Similar tests
+
+You use the chi-square test of independence for two nominal variables, not one.
+
+There are several tests that use chi-square statistics. The one described here is formally known as Pearson’s chi-square. It is by far the most common chi-square test, so it is usually just called the chi-square test.
+You have a choice of three goodness-of-fit tests: the exact test of goodness-of-fit, the G–test of goodness-of-fit,, or the chi-square test of goodness-of-fit. For small values of the expected numbers, the chi-square and G–tests are inaccurate, because the distributions of the test statistics do not fit the chi-square distribution very well.
+
+The usual rule of thumb is that you should use the exact test when the smallest
+expected value is less than 5, and the chi-square and G–tests are accurate enough for larger
+expected values.
+
+You can use the exact test when the total sample size is less than 1000. With sample sizes between 50 and 1000 and
+expected values greater than 5, it generally doesn’t make a big difference which test you use, so you shouldn’t criticize someone for using the chi-square or G–test for experiments where I recommend the exact test. 
+
+The chi-square test gives approximately the same results as the G–test. Unlike the chisquare
+test.
+
+# Power Analysis
+
+Example: Genetic cross of snapdragons with an expected **1:2:1 ratio**, and you want to be able to detect a pattern with 5% more heterozygotes that expected. 
+
+```{r}
+#library(pwr)
+
+P0      = c(0.25,  0.50, 0.25) # expected ratio
+P1      = c(0.225, 0.55, 0.225) # 5% increase
+
+effect.size = ES.w1(P0, P1)  
+
+degrees = length(P0) - 1
+
+pwr.chisq.test(
+               w=effect.size, 
+               N=NULL,            # Total number of observations
+               df=degrees, 
+               power=0.80,        # 1 minus Type II probability
+               sig.level=0.05) 
+#n = 963.4689
+```
+
